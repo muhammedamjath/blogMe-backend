@@ -39,6 +39,8 @@ exports.signupPost = async (req, res) => {
 
 // login post
 exports.loginPost = async (req, res) => {
+  console.log(req.body);
+  
   const { email, password } = req.body;
   const user = await clientSignupSchema.findOne({ email: email });
 
@@ -63,6 +65,10 @@ exports.loginPost = async (req, res) => {
   }
 };
 
+// reset password
+exports.resetpass = async (res,rtes)=>{
+  
+}
 
  
 
