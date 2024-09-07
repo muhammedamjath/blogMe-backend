@@ -5,12 +5,13 @@ const clientController = require('../controllers/clientController')
 const multer = require('../middleware/multer')
 const jwtAuthentication = require('../middleware/jwtAuthentication')
 
-clientRouter.post('/blog',jwtAuthentication,multer.upload,clientController.blogPost)
 clientRouter.get('/blog',jwtAuthentication,clientController.fullBlogGet)
 clientRouter.get('/blog/singleGet/:id',jwtAuthentication,clientController.getsingleBlog)
 clientRouter.get('/blog/getDrafs',jwtAuthentication,clientController.drafetdBlogs)
 clientRouter.get('/blog/postedBlogs',jwtAuthentication,clientController.postedBlogs)
 clientRouter.get('/blog/scheduledBlogs',jwtAuthentication,clientController.scheduledBlogs)
+clientRouter.post('/blog',jwtAuthentication,multer.upload,clientController.blogPost)
+clientRouter.post('/blog/rescedule',jwtAuthentication,clientController.reschedule)
 clientRouter.delete('/blog/:id',jwtAuthentication,clientController.deleteBlog)
 
 
