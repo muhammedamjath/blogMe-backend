@@ -1,25 +1,52 @@
 const { default: mongoose } = require("mongoose");
 const blogCollection = require("../model/blogPost");
+const cron = require("node-cron");
 
 // blog post
 exports.blogPost = async (req, res) => {
-  const { title, description, sceduleDate, sceduleTime, submitType } = req.body;
+  const { title, description, sceduleDate, scheduleTime, submitType } =
+    req.body;
   const file = req.file.path;
 
   const userId = req.user.id;
 
   try {
     let createBlog;
-    if (sceduleDate && sceduleTime) {
+    if (sceduleDate && scheduleTime) {
       createBlog = new blogCollection({
         title: title,
         description: description,
         sceduleDate: sceduleDate,
-        sceduleTime: sceduleTime,
+        sceduleTime: scheduleTime,
         userId: userId,
         image: file,
-        type: "sceduled",
+        type: "scheduled",
       });
+
+      const scheduledDateTime = new Date(`${sceduleDate}T${scheduleTime}`);
+      const cronTime = `${scheduledDateTime.getMinutes()} ${scheduledDateTime.getHours()} ${scheduledDateTime.getDate()} ${
+        scheduledDateTime.getMonth() + 1
+      } *`;
+      console.log(cronTime);
+      console.log(createBlog);
+
+      cron.schedule(
+        cronTime,
+        async () => {
+          await blogCollection.findOneAndUpdate(
+            { _id: createBlog._id },
+            {
+              $set: {
+                type: "posted",
+              },
+            }
+          );
+        },
+        {
+          scheduled: true,
+          timezone: "Asia/Kolkata",
+        }
+      );
     } else if (submitType == "draft") {
       createBlog = new blogCollection({
         title: title,
@@ -52,6 +79,11 @@ exports.blogPost = async (req, res) => {
 // full blog get
 exports.fullBlogGet = async (req, res) => {
   const blogs = await blogCollection.aggregate([
+    {
+      $match: {
+        type: "posted",
+      },
+    },
     {
       $lookup: {
         from: "clientsignups",
@@ -97,6 +129,20 @@ exports.postedBlogs = async (req, res) => {
   const blogs = await blogCollection.find({
     userId: new mongoose.Types.ObjectId(userId),
     type: "posted",
+  });
+  if (blogs) {
+    res.status(200).json(blogs);
+  } else {
+    res.status(401).json({ message: "requst again" });
+  }
+};
+
+// scheduled
+exports.scheduledBlogs = async (req, res) => {
+  const userId = req.user.id;
+  const blogs = await blogCollection.find({
+    userId: new mongoose.Types.ObjectId(userId),
+    type: "scheduled",
   });
   if (blogs) {
     res.status(200).json(blogs);
