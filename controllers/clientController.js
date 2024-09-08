@@ -1,4 +1,4 @@
-const { default: mongoose } = require("mongoose");
+const { default: mongoose, Types } = require("mongoose");
 const blogCollection = require("../model/blogPost");
 const cron = require("node-cron");
 
@@ -7,7 +7,7 @@ const cronJobs = new Map();
 
 // blog post
 exports.blogPost = async (req, res) => {
-  const { title, description, sceduleDate, scheduleTime, submitType } =
+  const { title, description, scheduleDate, scheduleTime, submitType } =
     req.body;
   const file = req.file.path;
 
@@ -20,13 +20,13 @@ exports.blogPost = async (req, res) => {
         title: title,
         description: description,
         userId: userId,
-        sceduleDate: sceduleDate,
-        sceduleTime: scheduleTime,
+        scheduleDate: scheduleDate,
+        scheduleTime: scheduleTime,
         image: file,
         type: "scheduled",
       });
 
-      const scheduledDateTime = new Date(`${sceduleDate}T${scheduleTime}`);
+      const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}`);
       const cronTime = `${scheduledDateTime.getMinutes()} ${scheduledDateTime.getHours()} ${scheduledDateTime.getDate()} ${
         scheduledDateTime.getMonth() + 1
       } *`;
@@ -37,7 +37,12 @@ exports.blogPost = async (req, res) => {
           await blogCollection.findOneAndUpdate(
             { _id: createBlog._id },
             {
-              $set: { type: "posted" },
+              $set: { 
+                type: "posted",
+                scheduleDate: "",
+                scheduleTime: "",
+                createdAt:Date.now()
+               },
             }
           );
         },
@@ -207,20 +212,18 @@ exports.deleteBlog = async (req, res) => {
 exports.reschedule = async (req, res) => {
   const { blogId, newDateTime } = req.body;
   try {
-
     const updateDateTime = await blogCollection.findOneAndUpdate(
-      {_id:new mongoose.Types.ObjectId(blogId)},
+      { _id: new mongoose.Types.ObjectId(blogId) },
       {
-        $set:{
-          sceduleDate: newDateTime.newDate,
-          sceduleTime: newDateTime.newTime,
-        }
+        $set: {
+          scheduleDate: newDateTime.newDate,
+          scheduleTime: newDateTime.newTime,
+        },
       }
-    )
-    if(updateDateTime){
-      res.status(200).json('date and time rescheduled')
+    );
+    if (updateDateTime) {
+      res.status(200).json("date and time rescheduled");
     }
-
 
     if (cronJobs.has(blogId)) {
       const oldCronJob = cronJobs.get(blogId);
@@ -242,7 +245,9 @@ exports.reschedule = async (req, res) => {
           {
             $set: {
               type: "posted",
-              createdAt:Date.now()
+              scheduleDate: "",
+              scheduleTime: "",
+              createdAt: Date.now(),
             },
           }
         );
@@ -254,5 +259,81 @@ exports.reschedule = async (req, res) => {
     );
   } catch (err) {
     console.log(err);
+  }
+};
+
+// update blog
+exports.updateBlog = async (req, res) => {
+  const { title, description, scheduleDate, scheduleTime, submitType, id } =
+    req.body;
+  const image = req.file;
+  console.log(id);
+
+  try {
+    const updateFields = {
+      title: title,
+      description: description,
+    };
+
+    if (scheduleDate && scheduleTime) {
+      updateFields.sceduleDate = scheduleDate;
+      updateFields.scheduleTime = scheduleTime;
+      updateFields.type = "scheduled";
+
+      // seting cron job
+      const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}`);
+      const cronTime = `${scheduledDateTime.getMinutes()} ${scheduledDateTime.getHours()} ${scheduledDateTime.getDate()} ${
+        scheduledDateTime.getMonth() + 1
+      } *`;
+
+      const scheduledCronJob = cron.schedule(
+        cronTime,
+        async () => {
+          await blogCollection.findOneAndUpdate(
+            { _id: createBlog._id },
+            {
+              $set: {
+                type: "posted",
+                scheduleDate: "",
+                scheduleTime: "",
+                createdAt: Date.now(),
+              },
+            }
+          );
+        },
+        {
+          scheduled: true,
+          timezone: "Asia/Kolkata",
+        }
+      );
+      cronJobs.set(createBlog._id.toString(), scheduledCronJob);
+    }
+
+    if (image) {
+      updateFields.image = image.path;
+    }
+
+    if (submitType === "draft") {
+      updateFields.type = "draft";
+    }
+
+    if (submitType === "post") {
+      updateFields.type = "posted";
+      updateFields.createdAt = Date.now();
+    }
+
+    const blog = await blogCollection.findOneAndUpdate(
+      { _id: new mongoose.Types.ObjectId(id) },
+      { $set: updateFields },
+      { new: true }
+    );
+
+    if (blog) {
+      res.status(200).json("blog updated");
+    } else {
+      res.status(200).json("blog not found");
+    }
+  } catch (err) {
+    res.status(401).json({ message: err });
   }
 };

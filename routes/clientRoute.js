@@ -12,6 +12,7 @@ clientRouter.get('/blog/postedBlogs',jwtAuthentication,clientController.postedBl
 clientRouter.get('/blog/scheduledBlogs',jwtAuthentication,clientController.scheduledBlogs)
 clientRouter.post('/blog',jwtAuthentication,multer.upload,clientController.blogPost)
 clientRouter.post('/blog/rescedule',jwtAuthentication,clientController.reschedule)
+clientRouter.put('/blog/:id',jwtAuthentication ,multer.upload,clientController.updateBlog)
 clientRouter.delete('/blog/:id',jwtAuthentication,clientController.deleteBlog)
 
 

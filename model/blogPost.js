@@ -11,10 +11,10 @@ const blogScema = new mongoose.Schema({
   description: {
     type: String,
   },
-  sceduleDate: {
+  scheduleDate: {
     type: String,
   },
-  sceduleTime: {
+  scheduleTime: {
     type: String,
   },
   type: {
